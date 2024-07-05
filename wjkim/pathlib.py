@@ -1,9 +1,10 @@
-__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'rename', 'copy', 'Quick']
+__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy', 'Quick']
 
 import os
 import re
 import sys
 import pickle
+from glob import glob as _glob
 from shutil import copy as _copy
 from pathlib import Path as _Path
 from datetime import datetime
@@ -29,6 +30,18 @@ def p(x: str, **kwargs):
 def o(x, *args, **kwargs):
     sp = subpath(x)
     return sp.o(*args, **kwargs)
+
+
+def glob(x, **excludes):
+    """Caution: If keys are not seperated, e.g. $tau$beta,
+    they will be translated as `**`, which means `any subdirectories`."""
+    sp = subpath(x)
+    return sp.glob(**excludes)
+
+
+def explore(x, *targets):
+    sp = subpath(x)
+    return sp.explore(*targets)
 
 
 def rename(base, pattern, old, new, skip=False, verbose=True):
@@ -383,3 +396,37 @@ class subpath(substr):
     def s(self, **kwargs):
         kwargs = self._constants | kwargs
         return super().s(**kwargs)
+
+    def ss(self, **kwargs):
+        kwargs = self._constants | kwargs
+        return super().ss(**kwargs)
+
+    def glob(self, **excludes):
+        cls = type(self)
+        new = self.ss(**excludes)
+        if isinstance(new, self.base_cls):
+            res = cls((super().c.sub('*', new.as_posix())))
+        elif isinstance(new, cls):
+            res = cls((super().c.sub('*', new.template)))
+        else:
+            raise ValueError(f'Unexpected type from subpath.glob(): {type(new)}')
+        kwargs = {key: '*' for key in res.keys}
+        return _glob(str(res.s(**kwargs)))
+
+    def explore(self, *targets):
+        new = self.ss()
+        kwargs = {key: fr'(?P<{key}>[\w.-]+)' for key in new.keys}
+        pattern = str(new.s(**kwargs))
+        pattern = pattern.replace('*', r'([\w.-]+)')
+        pattern = re.sub(r'(?<!\()\?(?!P)', r'([\\w.-])', pattern)  # replace `?` except `(?P<`
+        names = new.glob()
+        res = {}
+        for name in names:
+            for key, v in re.match(pattern, name).groupdict().items():
+                res.setdefault(key, []).append(v)
+
+        if not targets:
+            return res
+        if len(targets) == 1:
+            return res[targets[0]]
+        return {target: res[target] for target in targets}

@@ -1,5 +1,5 @@
-__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'rename', 'copy', 'Quick', 'tar']
-from .pathlib import substr, subpath, s, ss, p, o, rename, copy, Quick
+__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy', 'Quick', 'tar']
+from .pathlib import substr, subpath, s, ss, p, o, glob, explore, rename, copy, Quick
 from .tarfile import tar
 from .lab import col_wrap
 from .md import MdConvert
