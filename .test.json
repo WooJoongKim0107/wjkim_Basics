@@ -1,0 +1,5 @@
+{
+    "base": "$PROJ_DIR",
+    "src": "$PROJ_DIR/src",
+    "rsrc": "$PROJ_DIR/rsrc"
+}
