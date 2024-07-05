@@ -378,7 +378,8 @@ def _find_base_dir():
         if (path.stem == 'src') and any(path.parent == x for x in pathes):
             return path.parent  # ~/project_dir
     else:
-        raise ValueError('Project directory not found.')
+        print('Warning: No valid project directory found. Some features may not work.')
+        return _Path('.')
 
 
 class subpath(substr):
