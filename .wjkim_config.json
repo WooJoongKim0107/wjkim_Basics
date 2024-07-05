@@ -1,0 +1,8 @@
+{
+    "base": "$PROJ_DIR",
+    "src": "$PROJ_DIR/src",
+    "log": "$PROJ_DIR/log",
+    "rsrc": "$PROJ_DIR/rsrc",
+    "data": "$PROJ_DIR/rsrc/data",
+    "pdata": "$PROJ_DIR/rsrc/pdata"
+}

@@ -3,6 +3,7 @@ __all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename'
 import os
 import re
 import sys
+import json
 import pickle
 from glob import glob as _glob
 from shutil import copy as _copy
@@ -370,29 +371,49 @@ class substr:
         return open(self.s(**kwargs), **open_kwargs)
 
 
-def _find_base_dir():
-    if res := os.environ.get('PROJ_DIR', ''):
-        return _Path(res)
-    pathes = list(map(_Path, sys.path))
-    for path in pathes:
-        if (path.stem == 'src') and any(path.parent == x for x in pathes):
-            return path.parent  # ~/project_dir
-    else:
-        print('Warning: No valid project directory found. Some features may not work.')
-        return _Path('.')
+def _resolve_env_vars(x):
+    s = substr(x)
+    kwargs = {}
+    for key in s.keys:
+        kwargs[key] = os.environ.get(key, '')
+    return s.s(**kwargs)
+    
+
+def _fillout_constants():
+    # Find `.wjkim_config.json`
+    paths = list(map(_Path, sys.path))
+    for path in paths:
+        for json_path in path.glob('.wjkim_config.json'):
+            with open(json_path, 'r') as file:
+                dct = json.load(file)
+            res_dct = {k: _resolve_env_vars(v) for k, v in dct.items()}
+            print(f'{json_path} used for wjkim.pathlib')
+            return res_dct    
+
+    # Find `PROJ_DIR` environment variable
+    base_dir = _Path(os.environ.get('PROJ_DIR', ''))
+    if not base_dir:
+        print('Warning: No config file found for `wjkim.pathlib`.')
+        print('  To fully enable features, please generate `.wjkim_config.json`.')
+        print('  For more information, see https://github.com/WooJoongKim0107/wjkim_Basics')
+        return {}
+
+    print('Using environment variable `PROJ_DIR` for `wjkim.pathlib`')
+    default = dict(
+        base=base_dir,
+        src=base_dir/'src',
+        log=base_dir/'log',
+        rsrc=base_dir/'rsrc',
+        data=base_dir/'rsrc'/'data',
+        pdata=base_dir/'rsrc'/'pdata',
+        lite=base_dir/'rsrc'/'lite',
+    )
+    return default
 
 
 class subpath(substr):
     base_cls = _Path
-    _base = _find_base_dir()
-    _rsrc = _base / 'rsrc'
-    _constants = dict(
-        base=_base,
-        rsrc=_rsrc,
-        data=_rsrc/'data',
-        pdata=_rsrc/'pdata',
-        lite=_rsrc/'lite',
-    )
+    _constants = _fillout_constants()
 
     def s(self, **kwargs):
         kwargs = self._constants | kwargs
