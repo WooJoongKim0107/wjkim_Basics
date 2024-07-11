@@ -118,4 +118,5 @@ rsrc/
 src/
 *.txt
 *.idea/
-*.swp
+*.sw[po]
+
