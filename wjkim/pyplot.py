@@ -1,74 +1,94 @@
+from collections.abc import Sequence
 import numpy as np
-from numpy import matmul
-import matplotlib.pyplot as plt
-from itertools import zip_longest
 from matplotlib import rcParams
-from matplotlib.transforms import IdentityTransform, Transform
-
-print('wjkim.pyplot: Modify rcParams')
-rcParams['text.usetex'] = False
-rcParams['svg.fonttype'] = 'none'
-rcParams["font.family"] = ["sans-serif"]
-rcParams['font.sans-serif'] = ['Arial']
-rcParams['font.size'] = 8.0
+from matplotlib.figure import Figure
+from matplotlib.axes._axes import Axes
+from matplotlib.transforms import IdentityTransform  #, Transform
 
 
-class ExFigure(plt.Figure):
-    def add_axes(self, *locators, ha=-1, va=-1, **kwargs):
+def modify_rcparams():
+    print('wjkim.pyplot: Modify rcParams')
+    rcParams['text.usetex'] = False
+    rcParams['svg.fonttype'] = 'none'
+    rcParams['font.sans-serif'] = ['Arial']
+    rcParams['font.size'] = 8.
+    rcParams['figure.dpi'] = 300.
+
+
+class AxesLocator:
+    def __init__(self, fig: Figure, lbwh, unit='figure'):
+        self.fig = fig
+        self.pos = self.translate_lbwh(lbwh, self.fig, unit=unit)
+
+    @classmethod
+    def clone(cls, axis: Axes):
+        return cls(axis.figure, [0, 0, 1, 1], unit=axis)
+
+    def adjust(self, xywh: Sequence = (), unit='figure', x=0, y=0, w=0, h=0):
+        xywh = xywh if xywh else [x, y, w, h]
+        self.pos += self.translate_xywh(xywh, fig=self.fig, unit=unit)
+        return self
+    
+    def magnify(self, wh):
+        self.pos[2:4] *= wh
+        return self
+
+    def create(self, ha=-1, va=-1, **kwargs):
+        aligned_lbwh = self.align(self.pos, ha=ha, va=va)
+        return self.fig.add_axes(aligned_lbwh, **kwargs)
+    
+    @classmethod
+    def translate_xywh(cls, xywh, fig, unit='figure'):
         """
-        locator: [(x, transform), (y, transform), (w, transform), (h, transform)]
-        transform: Transform object that maps given position into display coordinate position
+        Let `lbwh` of `axis` be [0.1, 0.1, 0.3, 0.3] in figure unit.
+        Then `translate_xywh([1, 1, 1, 1])` will be
+        
+            [0.3, 0.3, 0.3, 0.3]
 
-                    1)      0 / 'figure'      (use when given data is already in figure coordinate)
-                    2)      'display'         (use when given data is in display coordinate)
-                    3)   'inch' or 'inches'   (use when given data is in inches)
-                    4)  Axes or ax.transAxes  (use when given data is in Axes coordinate)
-                    5)     ax.transData       (use when given data is in Data coordinate)
-                    6)   Transform object
-
-        locator of form [(x0, transform0, x1, transform1, ...) ,...] will be converted as xywh0 + xywh1 + ...
+        i.e., all elements are considered as 'length'
         """
-        xywh = sum(self.translate(locator) for locator in locators)
-        xywh_aligned = self.align(xywh, ha=ha, va=va)
-        return super().add_axes(xywh_aligned, **kwargs)
+        transform = cls.get_transform(fig, unit)
+        xy = transform(xywh[0:2]) - transform([0, 0])
+        wh = transform(xywh[2:4]) - transform([0, 0])
+        return np.array([*xy, *wh])
+    
+    @classmethod
+    def translate_lbwh(cls, lbwh, fig, unit='figure'):
+        """
+        Let `lbwh` of `axis` be [0.1, 0.1, 0.3, 0.3] in figure unit, then
+        Then `translate_lbwh([1, 1, 1, 1])` will be
+        
+            [0.4, 0.4, 0.3, 0.3]
 
-    def translate(self, locator):
-        xywh = np.zeros(4)
-        for _xywh, _transforms in self.unzip(locator):
-            transforms = [self.convert(t) for t in _transforms]
-            xywh += self.analyze(_xywh, transforms)
-        return xywh
-
+        i.e., `lb` are considered as 'position'
+        while `wh` are considered as 'length'
+        """
+        transform = cls.get_transform(fig, unit)
+        lb = transform(lbwh[0:2])
+        wh = transform(lbwh[2:4]) - transform([0, 0])
+        return np.array([*lb, *wh])
+    
     @staticmethod
-    def align(xywh, ha=-1, va=-1):
-        x, y, w, h = xywh
-        x -= w*(ha+1)/2
-        y -= h*(va+1)/2
-        return np.array([x, y, w, h])
-
+    def get_transform(fig, unit):
+        match unit:
+            case 'fig' | 'figure':
+                return IdentityTransform().transform
+            case 'dis' | 'display':
+                return fig.transFigure.inverted().transform
+            case 'inc' | 'inch':
+                return (fig.dpi_scale_trans + fig.transFigure.inverted()).transform
+            case Axes():
+                return (unit.transAxes + fig.transFigure.inverted()).transform
+            # case Transform():
+                # return (unit + self.transFigure.inverted()).transform
+        raise ValueError(f'Cannot recognize {unit}')
+    
     @staticmethod
-    def analyze(xywh, transforms):
-        x, _ = transforms[0].transform([xywh[0], 0])
-        _, y = transforms[1].transform([0, xywh[1]])
-        w, _ = transforms[2].transform([xywh[2], 0]) - transforms[2].transform([0, 0])
-        _, h = transforms[3].transform([0, xywh[3]]) - transforms[3].transform([0, 0])
-        return np.array([x, y, w, h])
+    def align(lbwh, ha=-1, va=-1):
+        l, b, w, h = lbwh
+        l -= w*(ha+1)/2
+        b -= h*(va+1)/2
+        return np.array([l, b, w, h])
 
-    @staticmethod
-    def unzip(locator):
-        return zip(*[zip_longest(*locator, fillvalue=0)]*2)
 
-    def convert(self, t):
-        if (t == 0) or (t in ['fig', 'figure']):
-            return IdentityTransform()
-        elif t == 'display':
-            return self.transFigure.inverted()
-        elif t in ['inch', 'inches']:
-            return self.dpi_scale_trans + self.transFigure.inverted()
-        elif isinstance(t, plt.Axes):
-            return t.transAxes + self.transFigure.inverted()
-        elif isinstance(t, Transform):
-            return t + self.transFigure.inverted()
-        else:
-            raise ValueError
-
+al = AxesLocator
