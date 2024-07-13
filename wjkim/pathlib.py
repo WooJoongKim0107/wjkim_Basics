@@ -382,7 +382,7 @@ def _resolve_env_vars(x):
 def _fillout_constants():
     # Find `.wjkim_config.json`
     paths = list(map(_Path, sys.path))
-    paths.append(_Path(os.getenv('HOME'))/'bin')
+    paths.append(_Path(os.getenv('HOME'))/'bin'/'others')
     for path in paths:
         for json_path in path.glob('.wjkim_config.json'):
             with open(json_path, 'r') as file:
