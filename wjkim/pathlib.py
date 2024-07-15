@@ -416,17 +416,17 @@ def _fillout_constants():
         print('  Option 2. Make `PROJ_DIR` to indicate the location of your project directory.')
         print('For more information, see https://github.com/WooJoongKim0107/wjkim_Basics')
         return {}
-    base_path = _Path(base_dir)
 
     print('Using environment variable `PROJ_DIR` for `wjkim.pathlib`')
+    base_path = _Path(base_dir)
     default = dict(
-        base=base_dir,
-        src=base_dir/'src',
-        log=base_dir/'log',
-        rsrc=base_dir/'rsrc',
-        data=base_dir/'rsrc'/'data',
-        pdata=base_dir/'rsrc'/'pdata',
-        lite=base_dir/'rsrc'/'lite',
+        base=base_path,
+        src=base_path/'src',
+        log=base_path/'log',
+        rsrc=base_path/'rsrc',
+        data=base_path/'rsrc'/'data',
+        pdata=base_path/'rsrc'/'pdata',
+        lite=base_path/'rsrc'/'lite',
     )
     return default
 
