@@ -382,16 +382,18 @@ def _resolve_env_vars(x):
 def _find_json_path():
     # Find `.wjkim_config.json` -- via `WJKIM_CONFIG_PATH`
     json_dir = os.environ.get('WJKIM_CONFIG_PATH', None)
-    if json_dir == '':
-        print('Warning: `WJKIM_CONFIG_PATH` is an empty string.')
-    elif json_dir and _Path(json_dir).is_dir():
-        print('Warning: `WJKIM_CONFIG_PATH` must point to `.wjkim_config.json` file, not its parent directory.')
-    elif json_dir and not _Path(json_dir).is_file():
-        print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} is not a file.')
-    elif json_dir and not _Path(json_dir).exists():
-        print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} does not exist.')
-    elif json_dir:
-        return _Path(json_dir)
+    if json_dir is not None:
+        json_path = _Path(json_dir)
+        if json_dir == '':
+            print('Warning: `WJKIM_CONFIG_PATH` is an empty string.')
+        elif json_path.exists():
+            print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} does not exist.')
+        elif json_path.is_dir():
+            print('Warning: `WJKIM_CONFIG_PATH` must point to `.wjkim_config.json` file, not its parent directory.')
+        elif json_path.is_file():
+            print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} is not a file.')
+        else:
+            return _Path(json_dir)
 
     # Find `.wjkim_config.json` -- via `$HOME/bin/others/.wjkim_config.json`
     default_path = _Path.home() / 'bin/others/.wjkim_config.json'
