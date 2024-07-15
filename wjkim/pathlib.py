@@ -377,27 +377,46 @@ def _resolve_env_vars(x):
     for key in s.keys:
         kwargs[key] = os.environ.get(key, '')
     return s.s(**kwargs)
-    
+
+
+def _find_json_path():
+    # Find `.wjkim_config.json` -- via `WJKIM_CONFIG_PATH`
+    json_dir = os.environ.get('WJKIM_CONFIG_PATH', None)
+    if json_dir == '':
+        print('Warning: `WJKIM_CONFIG_PATH` is an empty string.')
+    elif json_dir and _Path(json_dir).is_dir():
+        print('Warning: `WJKIM_CONFIG_PATH` must point to `.wjkim_config.json` file, not its parent directory.')
+    elif json_dir and not _Path(json_dir).is_file():
+        print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} is not a file.')
+    elif json_dir and not _Path(json_dir).exists():
+        print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} does not exist.')
+    elif json_dir:
+        return _Path(json_dir)
+
+    # Find `.wjkim_config.json` -- via `$HOME/bin/others/.wjkim_config.json`
+    default_path = _Path.home() / 'bin/others/.wjkim_config.json'
+    if default_path.is_file():
+        return default_path
+
 
 def _fillout_constants():
     # Find `.wjkim_config.json`
-    paths = list(map(_Path, sys.path))
-    paths.append(_Path(os.getenv('HOME'))/'bin'/'others')
-    for path in paths:
-        for json_path in path.glob('.wjkim_config.json'):
-            with open(json_path, 'r') as file:
-                dct = json.load(file)
-            res_dct = {k: _resolve_env_vars(v) for k, v in dct.items()}
-            print(f'{json_path} used for wjkim.pathlib')
-            return res_dct    
+    if json_path := _find_json_path():
+        with open(json_path, 'r') as file:
+            dct = json.load(file)
+        res_dct = {k: _resolve_env_vars(v) for k, v in dct.items()}
+        print(f'{json_path} used for wjkim.pathlib')
+        return res_dct    
 
     # Find `PROJ_DIR` environment variable
-    base_dir = _Path(os.environ.get('PROJ_DIR', ''))
+    base_dir = os.environ.get('PROJ_DIR', None)
     if not base_dir:
-        print('Warning: No config file found for `wjkim.pathlib`.')
-        print('  To fully enable features, please generate `.wjkim_config.json`.')
-        print('  For more information, see https://github.com/WooJoongKim0107/wjkim_Basics')
+        print('Warning: `wjkim.pathlib` not available.')
+        print('  Option 1. Generate `.wjkim_config.json` and save its location to `WJKIM_CONFIG_PATH` environment variable.')
+        print('  Option 2. Make `PROJ_DIR` to indicate the location of your project directory.')
+        print('For more information, see https://github.com/WooJoongKim0107/wjkim_Basics')
         return {}
+    base_path = _Path(base_dir)
 
     print('Using environment variable `PROJ_DIR` for `wjkim.pathlib`')
     default = dict(
