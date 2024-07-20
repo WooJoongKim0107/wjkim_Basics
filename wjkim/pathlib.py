@@ -13,9 +13,9 @@ from datetime import datetime
 _sentinel_dict = {}
 
 
-def s(x: str, **kwargs):
+def s(x: str, *, mkdir=False, **kwargs):
     sp = subpath(x)
-    return sp.s(**kwargs)
+    return sp.s(mkdir=mkdir, **kwargs)
 
 
 def ss(x: str, **kwargs):
@@ -28,9 +28,9 @@ def p(x: str, **kwargs):
     return sp.p(**kwargs)
 
 
-def o(x, *args, **kwargs):
+def o(x, *args, mkdir=False, **kwargs):
     sp = subpath(x)
-    return sp.o(*args, **kwargs)
+    return sp.o(*args, mkdir=mkdir, **kwargs)
 
 
 def glob(x, **excludes):
@@ -280,6 +280,12 @@ class Quick:
             self.dump(res, **kwargs)
             return res
 
+def _mkdir_parent(sp):
+    if not sp.parent.is_dir() and sp != sp.parent:  # sp == sp.parent if sp is '/'
+        print(f'wjkim_Warning: Directory {sp.parent.absolute()} not found.')
+        print(f'  Creating {sp.parent.absolute()}  - by wj.o(mkdir=True)')
+        sp.parent.mkdir(parents=True)
+
 
 class substr:
     base_cls = str
@@ -350,7 +356,7 @@ class substr:
             return self.base_cls(template)
         return type(self)(template)
 
-    def s(self, **kwargs):
+    def s(self, *, mkdir=False, **kwargs):
         full = kwargs | self._magic
         if not self.keys.issubset(full):
             raise KeyError(f'{self.keys.difference(full)} not provided.\nUse .ss() if necessary.')
@@ -358,6 +364,7 @@ class substr:
         if isinstance(x, type(self)):
             x = x.magic_substitute()
         if isinstance(x, self.base_cls):
+            _ = _mkdir_parent(x) if mkdir else None
             return x
         else:
             raise KeyError(f'Something went wrong! This supposed to be never triggered...\n{x}')
@@ -365,13 +372,10 @@ class substr:
     def p(self, **kwargs):
         print(self.s(**kwargs))
 
-    def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, mkdir=False, **kwargs):
-        p = self.s(**kwargs)
-        if mkdir and mode.startswith('w'):
-           p.parent.mkdir(parents=True)
+    def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, *, mkdir=False, **kwargs):
         open_kwargs = dict(mode=mode, buffering=buffering, encoding=encoding,
                            errors=errors, newline=newline, closefd=closefd, opener=opener)
-        return open(p, **open_kwargs)
+        return open(self.s(mkdir=mkdir, **kwargs), **open_kwargs)
 
 
 def _resolve_env_vars(x):
@@ -440,9 +444,9 @@ class subpath(substr):
     base_cls = _Path
     _constants = _fillout_constants()
 
-    def s(self, **kwargs):
+    def s(self, *, mkdir=False, **kwargs):
         kwargs = self._constants | kwargs
-        return super().s(**kwargs)
+        return super().s(mkdir=mkdir, **kwargs)
 
     def ss(self, **kwargs):
         kwargs = self._constants | kwargs
