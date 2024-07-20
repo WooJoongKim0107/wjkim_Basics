@@ -365,10 +365,13 @@ class substr:
     def p(self, **kwargs):
         print(self.s(**kwargs))
 
-    def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, **kwargs):
+    def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, mkdir=False, **kwargs):
+        p = self.s(**kwargs)
+        if mkdir and mode.startswith('w'):
+           p.parent.mkdir(parents=True)
         open_kwargs = dict(mode=mode, buffering=buffering, encoding=encoding,
                            errors=errors, newline=newline, closefd=closefd, opener=opener)
-        return open(self.s(**kwargs), **open_kwargs)
+        return open(p, **open_kwargs)
 
 
 def _resolve_env_vars(x):
