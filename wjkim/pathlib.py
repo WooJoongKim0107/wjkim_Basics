@@ -365,20 +365,11 @@ class substr:
     def p(self, **kwargs):
         print(self.s(**kwargs))
 
-    def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, *, mkdir=False, **kwargs):
-        open_kwargs = dict(mode=mode, buffering=buffering, encoding=encoding,
-                           errors=errors, newline=newline, closefd=closefd, opener=opener)
-        # if self.keys intersects with open_kwargs // or include mkdir, raise error
-        x = self.s(**kwargs)
-        if mkdir and 'w' in mode:
-            _mkdir_parent(x)
-        return open(x, **open_kwargs)
-
 
 def _mkdir_parent(sp):
     if not sp.parent.is_dir() and sp != sp.parent:  # sp == sp.parent if sp is '/'
         print(f'wjkim_Warning: Directory {sp.parent.absolute()} not found.')
-        print(f'  Creating {sp.parent.absolute()}  - by wj.o(mkdir=True)')
+        print(f'  Creating {sp.parent.absolute()}  - by mkdir=True')
         sp.parent.mkdir(parents=True)
 
 
@@ -447,8 +438,14 @@ def _fillout_constants():
 class subpath(substr):
     base_cls = _Path
     _constants = _fillout_constants()
+    _restricted = {'mkdir', 'mode', 'buffering', 'encoding', 'errors', 'newline', 'closefd', 'opener'}
 
-    # Add __init__(); Add error if key collision
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.keys.isdisjoint(self._restricted):
+            msg = f'{self.keys.intersection(self._restricted)} cannot be used. Followings are not allowed:\n'
+            msg += f'  {self._restricted}'
+            raise ValueError(msg)
 
     def s(self, *, mkdir=False, **kwargs):
         kwargs = self._constants | kwargs
@@ -460,6 +457,15 @@ class subpath(substr):
     def ss(self, **kwargs):
         kwargs = self._constants | kwargs
         return super().ss(**kwargs)
+
+    def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, *, mkdir=False, **kwargs):
+        open_kwargs = dict(mode=mode, buffering=buffering, encoding=encoding,
+                           errors=errors, newline=newline, closefd=closefd, opener=opener)
+        # if self.keys intersects with open_kwargs // or include mkdir, raise error
+        x = self.s(**kwargs)
+        if mkdir and 'w' in mode:
+            _mkdir_parent(x)
+        return open(x, **open_kwargs)
 
     def glob(self, **excludes):
         cls = type(self)
