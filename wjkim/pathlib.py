@@ -285,7 +285,6 @@ class substr:
     base_cls = str
     _magic = dict(
         strftime=None,
-        cwd=None,
     )
     a = re.compile(r'\$(?P<key>[_a-z][_a-z0-9]*)', flags=re.I)  # $key
     b = re.compile(r'\$?{(?P<key>[_a-z][_a-z0-9]*)}', flags=re.I)  # {key} or ${key}
@@ -328,8 +327,6 @@ class substr:
             key = x.group('key')
             if key == 'strftime':
                 return datetime.now().strftime('%Y-%m-%d %X')
-            elif key == 'cwd':
-                return os.getcwd()
             val = self._magic.get(key, x.group())
             return str(val)
 
