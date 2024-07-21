@@ -1,5 +1,5 @@
 __all__ = [
-    'substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy', 'Quick',
+    'substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy',
     'tar',
     'modify_rcparams', 'AxesLocator', 'al',
 ]
