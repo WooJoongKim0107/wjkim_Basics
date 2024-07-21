@@ -3,7 +3,7 @@ __all__ = [
     'tar',
     'modify_rcparams', 'AxesLocator', 'al',
 ]
-from .pathlib import substr, subpath, s, ss, p, o, glob, explore, rename, copy, Quick
+from .pathlib import substr, subpath, s, ss, p, o, glob, explore, rename, copy
 from .tarfile import tar
 from .pyplot import modify_rcparams, AxesLocator, al
 from .lab import col_wrap
