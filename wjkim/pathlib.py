@@ -94,6 +94,9 @@ class substr:
     def __repr__(self):
         return f"{type(self).__name__}('{self.template}')"
 
+    def _no_ambiguity(self):
+        return self.keys.issubset(self._magic)
+
     def ss(self, **kwargs):
         def ab_convert(x):
             key = x.group('key')
@@ -111,8 +114,6 @@ class substr:
         template = self.a.sub(ab_convert, self.template)
         template = self.b.sub(ab_convert, template)
         template = self.c.sub(c_convert, template)
-        if self.keys.issubset(kwargs):
-            return self.base_cls(template)
         return type(self)(template)
 
     def magic_substitute(self):
@@ -136,8 +137,6 @@ class substr:
         template = self.a.sub(ab_convert, self.template)
         template = self.b.sub(ab_convert, template)
         template = self.c.sub(c_convert, template)
-        if self.keys.issubset(self._magic):
-            return self.base_cls(template)
         return type(self)(template)
 
     def s(self, **kwargs):
@@ -145,12 +144,10 @@ class substr:
         if not self.keys.issubset(full):
             raise KeyError(f'{self.keys.difference(full)} not provided.\nUse .ss() if necessary.')
         x = self.ss(**kwargs)
-        if isinstance(x, type(self)):
-            x = x.magic_substitute()
-        if isinstance(x, self.base_cls):
-            return x
-        else:
-            raise KeyError(f'Something went wrong! This supposed to be never triggered...\n{x}')
+        x = x.magic_substitute()
+        if x._no_ambiguity():
+            return self.base_cls(x.template)
+        raise KeyError(f'Something went wrong! This supposed to be never triggered...\n{x}')
 
     def p(self, **kwargs):
         print(self.s(**kwargs))
@@ -237,6 +234,9 @@ class subpath(substr):
             msg += f'  {self._restricted}'
             raise ValueError(msg)
 
+    def _no_ambiguity(self):
+        return self.keys.issubset(self._magic | self._constants)
+
     def s(self, *, mkdir=False, **kwargs):
         kwargs = self._constants | kwargs
         sp = super().s(**kwargs)
@@ -251,7 +251,6 @@ class subpath(substr):
     def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, *, mkdir=False, **kwargs):
         open_kwargs = dict(mode=mode, buffering=buffering, encoding=encoding,
                            errors=errors, newline=newline, closefd=closefd, opener=opener)
-        # if self.keys intersects with open_kwargs // or include mkdir, raise error
         x = self.s(**kwargs)
         if mkdir and 'w' in mode:
             _mkdir_parent(x)
@@ -273,8 +272,12 @@ class subpath(substr):
         new = self.ss()
         kwargs = {key: fr'(?P<{key}>[\w.-]+)' for key in new.keys}
         pattern = str(new.s(**kwargs))
-        pattern = pattern.replace('*', r'([\w.-]+)')
-        pattern = re.sub(r'(?<!\()\?(?!P)', r'([\\w.-])', pattern)  # replace `?` except `(?P<`
+        for i in range(pattern.count('*')):
+            assert f'__STAR{i}__' not in new.keys, f'__STAR{i}__ cannot be used'
+            pattern = pattern.replace('*', rf'(?P<__STAR{i}__>[\w.-]+)', 1)
+        for i in range(len(re.findall(r'(?<!\()\?(?!P)', pattern))):
+            pattern = re.sub(r'(?<!\()\?(?!P)', rf'(?P<__QUESTION{i}__>[\\w.-])', pattern, count=1)  # replace `?` except `(?P<`
+        pattern = re.sub(r'(?<!\\)\.(?!-)', r'\.', pattern)  # replace `.` except `\w.-`
         names = new.glob()
         res = {}
         for name in names:
@@ -286,5 +289,3 @@ class subpath(substr):
         if len(targets) == 1:
             return res[targets[0]]
         return {target: res[target] for target in targets}
-
-
