@@ -1,4 +1,4 @@
-__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy']
+__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename']
 
 import os
 import re
@@ -45,86 +45,33 @@ def explore(x, *targets):
     return sp.explore(*targets)
 
 
-def rename(base, pattern, old, new, skip=False, verbose=True):
-    """
-    files = subpath(base).s().glob(pattern)
-    <rename files by replacing "old" to "new">
-    """
-    def search():
-        qs = s(base).glob(pattern)
-        fs = []
-        bfs = []
-        afs = []
-        for q in qs:
-            if q.is_file() and (old in q.as_posix()):
-                fs.append(q)
-                bfs.append(q.as_posix())
-                x = q.as_posix().split(old)
-                x.insert(1, new)
-                afs.append(''.join(x))
-        return fs, bfs, afs
+def rename(old, new, skip=False):
+    matches = glob(old)
+    assert matches, f'No files found for {old}'
+    assert 'parent' not in explore(old), 'tag `parent` cannot be used with .rename'
+    parent = _Path(matches[0]).parent
 
-    def announce(bfs, afs):
-        for b, a in zip(bfs, afs):
-            print(b, '->', a)
+    old2new = {}
+    kwargs = explore(old)
+    length = len(next(iter(kwargs.values())))
+    for i in range(length):
+        kw = {k: vs[i] for k, vs in kwargs.items()}
+        _old = subpath(old).s(**kw)
+        _new = subpath(new).s(parent=parent, **kw)
+        old2new[_old] = _new
 
-    def agreed():
-        answer = input('Proceed? [y]/n: ')
-        return answer in ['', 'y', 'yes', 'Yes', 'YES', '1']
-
-    def proceed(fs, afs):
-        for f, a in zip(fs, afs):
-            f.rename(a)
-
-    files, before, after = search()
-    if verbose:
-        announce(before, after)
     if skip:
-        proceed(files, after)
-    elif agreed():
-        print('Rename agreed')
-        proceed(files, after)
+        return _rename(old2new)
+    for i, (_old, _new) in enumerate(old2new.items()):
+        print(f'{i}: {_old.as_posix()} -> {_new.as_posix()}')
+    answer = input('Proceed? [y]/n: ')
+    if answer.lower() in ['', 'y', 'yes']:
+        return _rename(old2new)
 
 
-def copy(base, pattern, old, new, skip=False, verbose=True):
-    """
-    files = subpath(base).s().glob(pattern)
-    <rename files by replacing "old" to "new">
-    """
-    def search():
-        qs = s(base).glob(pattern)
-        fs = []
-        bfs = []
-        afs = []
-        for q in qs:
-            if q.is_file() and (old in q.as_posix()):
-                fs.append(q)
-                bfs.append(q.as_posix())
-                x = q.as_posix().split(old)
-                x.insert(1, new)
-                afs.append(''.join(x))
-        return fs, bfs, afs
-
-    def announce(bfs, afs):
-        for b, a in zip(bfs, afs):
-            print('Copy: ', b, '->', a)
-
-    def agreed():
-        answer = input('Proceed? [y]/n: ')
-        return answer in ['', 'y', 'yes', 'Yes', 'YES', '1']
-
-    def proceed(bfs, afs):
-        for b, a in zip(bfs, afs):
-            _copy(b, a)
-
-    files, before, after = search()
-    if verbose:
-        announce(before, after)
-    if skip:
-        proceed(before, after)
-    elif agreed():
-        print('Copy agreed')
-        proceed(before, after)
+def _rename(old2new):
+    for old, new in old2new.items():
+        old.rename(new)
 
 
 class substr:
@@ -339,3 +286,5 @@ class subpath(substr):
         if len(targets) == 1:
             return res[targets[0]]
         return {target: res[target] for target in targets}
+
+
