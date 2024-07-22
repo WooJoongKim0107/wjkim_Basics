@@ -282,6 +282,9 @@ class subpath(substr):
         new = self.ss()
         kwargs = {key: fr'(?P<{key}>[\w.-]+)' for key in new.keys}
         pattern = str(new.s(**kwargs))
+        for i in range(pattern.count('**')):
+            assert f'__DSTAR{i}__' not in new.keys, f'__DSTAR{i}__ cannot be used'
+            pattern = pattern.replace('*', rf'(?P<__DSTAR{i}__>[\w.-/]+)', 1)
         for i in range(pattern.count('*')):
             assert f'__STAR{i}__' not in new.keys, f'__STAR{i}__ cannot be used'
             pattern = pattern.replace('*', rf'(?P<__STAR{i}__>[\w.-]+)', 1)
