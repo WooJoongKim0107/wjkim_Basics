@@ -51,8 +51,18 @@ def rename(old, new, skip=False):
     assert 'parent' not in explore(old), 'tag `parent` cannot be used with .rename'
     parent = _Path(matches[0]).parent
 
+    __old = old
+    for i in range(old.count('*')):
+        old = old.replace('*', f'${{__STAR{i}__}}', 1)
+    for i in range(old.count('?')):
+        old = old.replace('?', f'${{__QUESTION{i}__}}', 1)
+    for i in range(new.count('*')):
+        new = new.replace('*', f'${{__STAR{i}__}}', 1)
+    for i in range(new.count('?')):
+        new = new.replace('?', f'${{__QUESTION{i}__}}', 1)
+
     old2new = {}
-    kwargs = explore(old)
+    kwargs = explore(__old)
     length = len(next(iter(kwargs.values())))
     for i in range(length):
         kw = {k: vs[i] for k, vs in kwargs.items()}
