@@ -1,4 +1,4 @@
-__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename']
+__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy']
 
 import os
 import re
@@ -46,6 +46,28 @@ def explore(x, *targets):
 
 
 def rename(old, new, skip=False):
+    old2new = _remap(old, new)
+    if skip:
+        return _rename_all(old2new)
+    for i, (_old, _new) in enumerate(old2new.items()):
+        print(f'{i}: {_old.as_posix()} -> {_new.as_posix()}')
+    answer = input('Proceed renaming? y/[n]: ')
+    if answer.lower() in ['y', 'yes']:
+        return _rename_all(old2new)
+
+
+def copy(old, new, skip=False):
+    old2new = _remap(old, new)
+    if skip:
+        return _copy_all(old2new)
+    for i, (_old, _new) in enumerate(old2new.items()):
+        print(f'{i}: {_old.as_posix()} -> {_new.as_posix()}')
+    answer = input('Proceed copying? y/[n]: ')
+    if answer.lower() in ['y', 'yes']:
+        return _copy_all(old2new)
+
+
+def _remap(old, new):
     matches = glob(old)
     assert matches, f'No files found for {old}'
     assert 'parent' not in explore(old), 'tag `parent` cannot be used with .rename'
@@ -71,19 +93,17 @@ def rename(old, new, skip=False):
         old_path = subpath(old).s(**kw)
         new_path = subpath(new).s(parent=parent, **kw)
         old2new[old_path] = new_path
-
-    if skip:
-        return _rename(old2new)
-    for i, (_old, _new) in enumerate(old2new.items()):
-        print(f'{i}: {_old.as_posix()} -> {_new.as_posix()}')
-    answer = input('Proceed? [y]/n: ')
-    if answer.lower() in ['', 'y', 'yes']:
-        return _rename(old2new)
+    return old2new
 
 
-def _rename(old2new):
+def _rename_all(old2new):
     for old, new in old2new.items():
         old.rename(new)
+
+
+def _copy_all(old2new):
+    for old, new in old2new.items():
+        _copy(old, new)
 
 
 class substr:
