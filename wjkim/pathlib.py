@@ -308,20 +308,19 @@ class subpath(substr):
 
 
 def _interpret_wildcards(x, keys):
-    # TODO use r'(?<!a)b|b(?!c)' for b, ab, bc, but abc
     x0 = x
 
-    # x = re.sub(r'(?<!\\)\.(?!-)', r'\.', x)  # replace `.` except `\w.-`
-    x = x.replace('.', r'\.')  # replace `.` with `\.` to avoid misinterpretation with re
+    # replace `.` with `\.` to avoid misinterpretation with re
+    x = x.replace('.', r'\.')
     x1 = x
 
-    #for i in range(len(re.findall(r'(?<!\()\?(?!P)', x))):
-    #    x = re.sub(r'(?<!\()\?(?!P)', rf'(?P<__QUESTION{i}__>[\\w.-])', x, count=1)  # replace `?` except `(?P<`
+    # replace `?` with `(?P<__QUESTION{i}__>[^/])`
     for i in range(x.count('?')):
         assert f'__QUESTION{i}__' not in keys, f'__QUESTION{i}__ cannot be used'
         x = x.replace('?', rf'(?P<__QUESTION{i}__>[^/])')
     x2 = x
 
+    # replace `*`
     i = -1
     j = -1
     for _ in range(x.count('/**')):
@@ -329,7 +328,6 @@ def _interpret_wildcards(x, keys):
         assert f'__DSTAR{i}__' not in keys, f'__DSTAR{i}__ cannot be used'
         x = x.replace('/**', rf'/?(?P<__DSTAR{i}__>.*)', 1)
     x3 = x
-
     for _ in range(x.count('**/*')):
         i += 1
         j += 1
@@ -338,26 +336,21 @@ def _interpret_wildcards(x, keys):
         x = x.replace('**/*', rf'(?P<__DSTAR{i}__>.*?)/?(?P<__STAR{j}__>[^/]*)', 1)
         # x = x.replace('**/*', rf'(?P<__DSTAR{i}__>.*)/?', 1)
     x4 = x
-
     for _ in range(x.count('**/')):
         i += 1
         assert f'__DSTAR{i}__' not in keys, f'__DSTAR{i}__ cannot be used'
         x = x.replace('**/', rf'(?P<__DSTAR{i}__>.*)/?', 1)
     x5 = x
-
     for _ in range(x.count('**')):
         i += 1
         assert f'__DSTAR{i}__' not in keys, f'__DSTAR{i}__ cannot be used'
         x = x.replace('**', rf'(?P<__DSTAR{i}__>.*)', 1)
     x6 = x
-
     for _ in range(len(re.findall(r'(?<!>\.|/\])\*|\*(?!\))', x))):
         j += 1
         assert f'__STAR{j}__' not in keys, f'__STAR{j}__ cannot be used'
-        x = re.sub(r'(?<!>\.|/\])\*|\*(?!\))', rf'(?P<__STAR{j}__>[^/]*)', x, count=1)  # replace `*` except `/.*)`
+        x = re.sub(r'(?<!>\.|/\])\*|\*(?!\))', rf'(?P<__STAR{j}__>[^/]*)', x, count=1)
     x7 = x
 
-    x = '^' + x + '$'
-    x8 = x
-    return x
+    return '^' + x + '$'
 
