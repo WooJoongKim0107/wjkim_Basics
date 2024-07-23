@@ -305,8 +305,6 @@ class subpath(substr):
         for name in names:
             for key, v in re.match(pattern, name).groupdict().items():
                 res.setdefault(key, []).append(v)
-    
-        assert res  # TODO: remove
 
         if not targets:
             return res
