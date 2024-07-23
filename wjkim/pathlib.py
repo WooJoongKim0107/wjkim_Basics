@@ -351,10 +351,10 @@ def _interpret_wildcards(x, keys):
         x = x.replace('**', rf'(?P<__DSTAR{i}__>.*)', 1)
     x6 = x
 
-    for _ in range(len(re.findall(r'(?<!>\.|-\])\*(?!\))', x))):
+    for _ in range(len(re.findall(r'(?<!>\.|/\])\*|\*(?!\))', x))):
         j += 1
         assert f'__STAR{j}__' not in keys, f'__STAR{j}__ cannot be used'
-        x = re.sub(r'(?<!>\.|/\])\*(?!\))', rf'(?P<__STAR{j}__>[\\w.-]*)', x, count=1)  # replace `*` except `/.*)`
+        x = re.sub(r'(?<!>\.|/\])\*|\*(?!\))', rf'(?P<__STAR{j}__>[^/]*)', x, count=1)  # replace `*` except `/.*)`
     x7 = x
 
     x = '^' + x + '$'
