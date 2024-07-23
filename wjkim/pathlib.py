@@ -249,6 +249,11 @@ class subpath(substr):
     def _no_ambiguity(self):
         return self.keys.issubset(self._magic | self._constants)
 
+    def as_str(self, **kwargs):
+        semi_final = str(self.s(**kwargs))
+        final = semi_final+'/' if self.template.endswith('/') else semi_final
+        return final
+
     def s(self, *, mkdir=False, **kwargs):
         kwargs = self._constants | kwargs
         sp = super().s(**kwargs)
@@ -271,43 +276,88 @@ class subpath(substr):
     def glob(self, **excludes):
         cls = type(self)
         new = self.ss(**excludes)
-        if isinstance(new, self.base_cls):
+        if isinstance(new, self.base_cls):  # TODO remove: not req anymore
             res = cls((super().c.sub('*', new.as_posix())))
         elif isinstance(new, cls):
             res = cls((super().c.sub('*', new.template)))
-        else:
+        else:  # TODO remove: never reached
             raise ValueError(f'Unexpected type from subpath.glob(): {type(new)}')
         kwargs = {key: '*' for key in res.keys}
-        return _glob(str(res.s(**kwargs)), recursive=True)
+        return _glob(res.as_str(), recursive=True)
 
     def explore(self, *targets):
         new = self.ss()
         kwargs = {key: fr'(?P<{key}>[\w.-]+)' for key in new.keys}
-        pattern = str(new.s(**kwargs))
-        pattern = re.sub(r'(?<!\\)\.(?!-)', r'\.', pattern)  # replace `.` except `\w.-`
-        _stop = -1
-        for i in range(pattern.count('/**')):
-            assert f'__DSTAR{i}__' not in new.keys, f'__DSTAR{i}__ cannot be used'
-            pattern = pattern.replace('/**', rf'(?P<__DSTAR{i}__>/.*)', 1)
-            _stop = i
-        for _i in range(pattern.count('**')):
-            i = _i + _stop + 1
-            assert f'__DSTAR{i}__' not in new.keys, f'__DSTAR{i}__ cannot be used'
-            pattern = pattern.replace('**', rf'(?P<__DSTAR{i}__>.*)', 1)
-        for i in range(pattern.count('*')):
-            assert f'__STAR{i}__' not in new.keys, f'__STAR{i}__ cannot be used'
-            pattern = re.sub(r'(?<!/.|-\])\*(?!\))', rf'(?P<__STAR{i}__>[\\w.-]*)', pattern, count=1)  # replace `*` except `/.*)`
-            # pattern = pattern.replace('*', rf'(?P<__STAR{i}__>[\w.-]+)', 1)
-        for i in range(len(re.findall(r'(?<!\()\?(?!P)', pattern))):
-            pattern = re.sub(r'(?<!\()\?(?!P)', rf'(?P<__QUESTION{i}__>[\\w.-])', pattern, count=1)  # replace `?` except `(?P<`
-        names = new.glob()
+        pattern = new.as_str(**kwargs)
+        pattern = _interpret_wildcards(pattern, new.keys)
+
+        filenames = new.glob()
         res = {}
-        for name in names:
-            for key, v in re.match(pattern, name).groupdict().items():
-                res.setdefault(key, []).append(v)
+        for filename in filenames:
+            if match := re.match(pattern, filename):
+                for key, v in match.groupdict().items():
+                    res.setdefault(key, []).append(v)
+            else:
+                raise ValueError(f'wj.glob and wj.explore does not match for {self.template}.\n  Please report this to wjkim!')
 
         if not targets:
             return res
         if len(targets) == 1:
             return res[targets[0]]
         return {target: res[target] for target in targets}
+
+
+def _interpret_wildcards(x, keys):
+    # TODO use r'(?<!a)b|b(?!c)' for b, ab, bc, but abc
+    x0 = x
+
+    # x = re.sub(r'(?<!\\)\.(?!-)', r'\.', x)  # replace `.` except `\w.-`
+    x = x.replace('.', r'\.')  # replace `.` with `\.` to avoid misinterpretation with re
+    x1 = x
+
+    #for i in range(len(re.findall(r'(?<!\()\?(?!P)', x))):
+    #    x = re.sub(r'(?<!\()\?(?!P)', rf'(?P<__QUESTION{i}__>[\\w.-])', x, count=1)  # replace `?` except `(?P<`
+    for i in range(x.count('?')):
+        assert f'__QUESTION{i}__' not in keys, f'__QUESTION{i}__ cannot be used'
+        x = x.replace('?', rf'(?P<__QUESTION{i}__>[^/])')
+    x2 = x
+
+    i = -1
+    j = -1
+    for _ in range(x.count('/**')):
+        i += 1
+        assert f'__DSTAR{i}__' not in keys, f'__DSTAR{i}__ cannot be used'
+        x = x.replace('/**', rf'/?(?P<__DSTAR{i}__>.*)', 1)
+    x3 = x
+
+    for _ in range(x.count('**/*')):
+        i += 1
+        j += 1
+        assert f'__DSTAR{i}__' not in keys, f'__DSTAR{i}__ cannot be used'
+        assert f'__STAR{j}__' not in keys, f'__STAR{j}__ cannot be used'
+        x = x.replace('**/*', rf'(?P<__DSTAR{i}__>.*?)/?(?P<__STAR{j}__>[^/]*)', 1)
+        # x = x.replace('**/*', rf'(?P<__DSTAR{i}__>.*)/?', 1)
+    x4 = x
+
+    for _ in range(x.count('**/')):
+        i += 1
+        assert f'__DSTAR{i}__' not in keys, f'__DSTAR{i}__ cannot be used'
+        x = x.replace('**/', rf'(?P<__DSTAR{i}__>.*)/?', 1)
+    x5 = x
+
+    for _ in range(x.count('**')):
+        i += 1
+        assert f'__DSTAR{i}__' not in keys, f'__DSTAR{i}__ cannot be used'
+        x = x.replace('**', rf'(?P<__DSTAR{i}__>.*)', 1)
+    x6 = x
+
+    for _ in range(len(re.findall(r'(?<!>\.|-\])\*(?!\))', x))):
+        j += 1
+        assert f'__STAR{j}__' not in keys, f'__STAR{j}__ cannot be used'
+        x = re.sub(r'(?<!>\.|/\])\*(?!\))', rf'(?P<__STAR{j}__>[\\w.-]*)', x, count=1)  # replace `*` except `/.*)`
+    x7 = x
+
+    x = '^' + x + '$'
+    x8 = x
+    return x
+
