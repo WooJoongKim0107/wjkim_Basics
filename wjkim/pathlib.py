@@ -1,4 +1,4 @@
-__all__ = ['substr', 'subpath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy']
+__all__ = ['SubStr', 'SubPath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename', 'copy']
 
 import os
 import re
@@ -10,38 +10,36 @@ from shutil import copy as _copy
 from pathlib import Path as _Path
 from datetime import datetime
 
-_sentinel_dict = {}
-
 
 def s(x: str, *, mkdir=False, **kwargs):
-    sp = subpath(x)
+    sp = SubPath(x)
     return sp.s(mkdir=mkdir, **kwargs)
 
 
 def ss(x: str, **kwargs):
-    sp = subpath(x)
+    sp = SubPath(x)
     return sp.ss(**kwargs)
 
 
 def p(x: str, **kwargs):
-    sp = subpath(x)
+    sp = SubPath(x)
     return sp.p(**kwargs)
 
 
 def o(x, *args, mkdir=False, **kwargs):
-    sp = subpath(x)
+    sp = SubPath(x)
     return sp.o(*args, mkdir=mkdir, **kwargs)
 
 
 def glob(x, **excludes):
     """Caution: If keys are not seperated, e.g. $tau$beta,
     they will be translated as `**`, which means `any subdirectories`."""
-    sp = subpath(x)
+    sp = SubPath(x)
     return sp.glob(**excludes)
 
 
 def explore(x, *targets):
-    sp = subpath(x)
+    sp = SubPath(x)
     return sp.explore(*targets)
 
 
@@ -90,8 +88,8 @@ def _remap(old, new):
     length = len(next(iter(kwargs.values())))
     for i in range(length):
         kw = {k: vs[i] for k, vs in kwargs.items()}
-        old_path = subpath(old).s(**kw)
-        new_path = subpath(new).s(parent=parent, **kw)
+        old_path = SubPath(old).s(**kw)
+        new_path = SubPath(new).s(parent=parent, **kw)
         old2new[old_path] = new_path
     return old2new
 
@@ -106,7 +104,7 @@ def _copy_all(old2new):
         _copy(old, new)
 
 
-class substr:
+class SubStr:
     base_cls = str
     _magic = dict(
         strftime=None,
@@ -193,7 +191,7 @@ def _mkdir_parent(sp):
 
 
 def _resolve_env_vars(x):
-    s = substr(x)
+    s = SubStr(x)
     kwargs = {}
     for key in s.keys:
         kwargs[key] = os.environ.get(key, '')
@@ -254,7 +252,7 @@ def _fillout_constants():
     return default
 
 
-class subpath(substr):
+class SubPath(SubStr):
     base_cls = _Path
     _constants = _fillout_constants()
     _restricted = {'mkdir', 'mode', 'buffering', 'encoding', 'errors', 'newline', 'closefd', 'opener'}
@@ -301,7 +299,7 @@ class subpath(substr):
         elif isinstance(new, cls):
             res = cls((super().c.sub('*', new.template)))
         else:  # TODO remove: never reached
-            raise ValueError(f'Unexpected type from subpath.glob(): {type(new)}')
+            raise ValueError(f'Unexpected type from SubPath.glob(): {type(new)}')
         kwargs = {key: '*' for key in res.keys}
         return _glob(res.as_str(), recursive=True)
 
