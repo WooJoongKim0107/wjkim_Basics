@@ -293,15 +293,9 @@ class SubPath(SubStr):
 
     def glob(self, **excludes):
         cls = type(self)
-        new = self.ss(**excludes)
-        if isinstance(new, self.base_cls):  # TODO remove: not req anymore
-            res = cls((super().c.sub('*', new.as_posix())))
-        elif isinstance(new, cls):
-            res = cls((super().c.sub('*', new.template)))
-        else:  # TODO remove: never reached
-            raise ValueError(f'Unexpected type from SubPath.glob(): {type(new)}')
-        kwargs = {key: '*' for key in res.keys}
-        return _glob(res.as_str(), recursive=True)
+        x = self.ss(**excludes)
+        kwargs = {key: '*' for key in x.keys}  # TODO not used?
+        return _glob(x.as_str(), recursive=True)  # as_str requires no amb left
 
     def explore(self, *targets):
         new = self.ss()
