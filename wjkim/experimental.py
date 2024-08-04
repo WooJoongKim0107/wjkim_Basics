@@ -10,7 +10,7 @@ class Quick:
 
     Design:
         (file): specified by .__new__(<file_name>) and .__init__(<file_name>)
-                Assume subpath(<file_name>).s(**<kwargs>) points the actual file (, say <exact_file_name>)
+                Assume SubPath(<file_name>).s(**<kwargs>) points the actual file (, say <exact_file_name>)
         (load): specified by .register('load')(<load>)
                 If not given, pickle.load() with mode='rb' will be used.
                 Assume <load>(<exact_file_name>, **kwargs) as its signature
@@ -21,7 +21,7 @@ class Quick:
                 If not given, pickle.dump() with mode='wb' will be used.
                 Assume <dump>(<obj>, <exact_file_name>, **kwargs) as its signature
 
-    Step 1. initiate: Same as subpath - It will use cache, so don't need to store the instance
+    Step 1. initiate: Same as SubPath - It will use cache, so don't need to store the instance
     Step 2. register: by wrapping a function to register its .gen, (optional) .load and (optional) .dump
     Step 3.      get: Initiate again (loaded from cache), and call .get(**kwargs)
 
@@ -75,7 +75,7 @@ class Quick:
             return
         else:
             self.__cache__[fname] = self
-        self.fname: subpath = subpath(fname)
+        self.fname: SubPath = SubPath(fname)
         self._exist = None
         self._load = None
         self._dump = None

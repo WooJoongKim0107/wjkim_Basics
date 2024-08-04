@@ -1,11 +1,11 @@
 from omegaconf import OmegaConf, DictConfig
-from .pathlib import subpath
+from .pathlib import SubPath
 
 Config = DictConfig | dict | list | str
 
 
 def manager(filepath):
-    filepath = subpath.s(filepath)
+    filepath = SubPath.s(filepath)
     directory = filepath.parents[0]
     q = OmegaConf.load(filepath)
     confs = [OmegaConf.create({key: OmegaConf.load(directory/key/target)}) for key, target in q.items()]
