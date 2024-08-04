@@ -47,8 +47,21 @@ def explore(x, *targets):
     return sp.explore(*targets)
 
 
-def rename(old, new, skip=False):
-    old2new = _remap(old, new)
+def rename(old, new, key=None, skip=False):
+    """
+    for filepath in glob(old):
+        kw= parse_kw(filepath)
+        old_sp = SubPath(old).s(**kw)
+        alt_kw = key(kw)
+        new_sp = SubPath(new).s(**alt_kw)
+ 
+    key: None or Callable
+         If not provided, considered as identity function
+ 
+         Example usage: 
+         `key=lambda x: x | dict(i=int(x['i']) + 10)`
+    """
+    old2new = _remap(old, new, key=key)
     if skip:
         return _rename_all(old2new)
     for i, (_old, _new) in enumerate(old2new.items()):
@@ -58,8 +71,8 @@ def rename(old, new, skip=False):
         return _rename_all(old2new)
 
 
-def copy(old, new, skip=False):
-    old2new = _remap(old, new)
+def copy(old, new, key=None, skip=False):
+    old2new = _remap(old, new, key=key)
     if skip:
         return _copy_all(old2new)
     for i, (_old, _new) in enumerate(old2new.items()):
@@ -69,10 +82,11 @@ def copy(old, new, skip=False):
         return _copy_all(old2new)
 
 
-def _remap(old, new):
+def _remap(old, new, key=None):
     matches = glob(old)
     assert matches, f'No files found for {old}'
     assert 'parent' not in explore(old), 'tag `parent` cannot be used with .rename'
+    assert key is None or callable(key), f'key must be either None or callable'
     parent = _Path(matches[0]).parent
 
     old_template = old
@@ -93,7 +107,7 @@ def _remap(old, new):
     for i in range(length):
         kw = {k: vs[i] for k, vs in kwargs.items()}
         old_path = SubPath(old).s(**kw)
-        new_path = SubPath(new).s(parent=parent, **kw)
+        new_path = SubPath(new).s(parent=parent, **key(kw))
         old2new[old_path] = new_path
     return old2new
 
