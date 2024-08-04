@@ -31,11 +31,15 @@ def o(x, *args, mkdir=False, **kwargs):
     return sp.o(*args, mkdir=mkdir, **kwargs)
 
 
-def glob(x, **excludes):
-    """Caution: If keys are not seperated, e.g. $tau$beta,
-    they will be translated as `**`, which means `any subdirectories`."""
+def glob(x, **kwargs):
+    """
+    Equivalent to bash `ls -d` when `shopt -s globstar` enabled.
+
+    Caution: If keys are not seperated, e.g. $tau$beta,
+    they will be translated as `**`, which means `any subdirectories`.
+    """
     sp = SubPath(x)
-    return sp.glob(**excludes)
+    return sp.glob(**kwargs)
 
 
 def explore(x, *targets):
@@ -106,7 +110,7 @@ def _copy_all(old2new):
 
 class SubStr:
     base_cls = str
-    _magic = dict(
+    _lazy = dict(
         strftime=None,
     )
     a = re.compile(r'\$(?P<key>[_a-z][_a-z0-9]*)', flags=re.I)  # $key
@@ -124,8 +128,8 @@ class SubStr:
     def __repr__(self):
         return f"{type(self).__name__}('{self.template}')"
 
-    def _no_ambiguity(self):
-        return self.keys.issubset(self._magic)
+    def ambiguous(self, **kwargs):
+        return self.keys.difference(self._lazy | kwargs)
 
     def ss(self, **kwargs):
         def ab_convert(x):
@@ -146,22 +150,22 @@ class SubStr:
         template = self.c.sub(c_convert, template)
         return type(self)(template)
 
-    def magic_substitute(self):
+    def lazy_substitute(self):
         def ab_convert(x):
             key = x.group('key')
             if key == 'strftime':
                 return datetime.now().strftime('%Y-%m-%d %X')
-            val = self._magic.get(key, x.group())
+            val = self._lazy.get(key, x.group())
             return str(val)
 
         def c_convert(x):
             key, fmt = x.groups()
-            if key not in self._magic:
+            if key not in self._lazy:
                 return x.group()
             elif key == 'strftime':
                 return datetime.now().strftime(fmt)
             else:
-                val = self._magic[key]
+                val = self._lazy[key]
                 return f'{val:{fmt}}'
 
         template = self.a.sub(ab_convert, self.template)
@@ -170,14 +174,13 @@ class SubStr:
         return type(self)(template)
 
     def s(self, **kwargs):
-        full = kwargs | self._magic
-        if not self.keys.issubset(full):
-            raise KeyError(f'{self.keys.difference(full)} not provided.\nUse .ss() if necessary.')
+        if left := self.ambiguous(**kwargs):
+            raise KeyError(f'{", ".join(map(str, left))} not provided.\nUse .ss() if necessary.')
         x = self.ss(**kwargs)
-        x = x.magic_substitute()
-        if x._no_ambiguity():
+        x = x.lazy_substitute()
+        if not x.ambiguous():
             return self.base_cls(x.template)
-        raise KeyError(f'Something went wrong! This supposed to be never triggered...\n{x}')
+        raise KeyError(f'Something went wrong... Never supposed to be triggered...\nPlease report this to wjkim.\n{x}')
 
     def p(self, **kwargs):
         print(self.s(**kwargs))
@@ -264,8 +267,8 @@ class SubPath(SubStr):
             msg += f'  {self._restricted}'
             raise ValueError(msg)
 
-    def _no_ambiguity(self):
-        return self.keys.issubset(self._magic | self._constants)
+    def ambiguous(self, **kwargs):
+        return self.keys.difference(self._lazy | self._constants | kwargs)
 
     def as_str(self, **kwargs):
         semi_final = str(self.s(**kwargs))
@@ -291,11 +294,14 @@ class SubPath(SubStr):
             _mkdir_parent(x)
         return open(x, **open_kwargs)
 
-    def glob(self, **excludes):
-        cls = type(self)
-        x = self.ss(**excludes)
-        kwargs = {key: '*' for key in x.keys}  # TODO not used?
-        return _glob(x.as_str(), recursive=True)  # as_str requires no amb left
+    def glob(self, **kwargs):
+        """Equivalent to bash `ls -d` when `shopt -s globstar` enabled."""
+        temp = self.ss(**kwargs)
+        final = temp.ss(**{key: '*' for key in temp.keys})
+        if left := final.ambiguous():
+            raise KeyError(f'{", ".join(map(str, left))} not provided.\n')
+        raw = _glob(final.as_str(), recursive=True)
+        return sorted(sorted(raw, key=lambda x: (x.count('/'))))
 
     def explore(self, *targets):
         new = self.ss()
@@ -327,9 +333,9 @@ def _interpret_wildcards(x, keys):
     x1 = x
 
     # replace `?` with `(?P<__QUESTION{i}__>[^/])`
-    for i in range(x.count('?')):
+    for i in range(len(re.findall(r'(?<!\()\?|\?(?!P)', x))):
         assert f'__QUESTION{i}__' not in keys, f'__QUESTION{i}__ cannot be used'
-        x = x.replace('?', rf'(?P<__QUESTION{i}__>[^/])')
+        x = re.sub(r'(?<!\()\?|\?(?!P)', rf'(?P<__QUESTION{i}__>[\\w.-]')
     x2 = x
 
     # replace `*`
