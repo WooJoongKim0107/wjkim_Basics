@@ -216,7 +216,7 @@ def _resolve_env_vars(x):
 
 
 def _find_json_path():
-    # Find `.wjkim_config.json` -- via `WJKIM_CONFIG_PATH`
+    # Find `wjkim_config.json` -- via `WJKIM_CONFIG_PATH`
     json_dir = os.environ.get('WJKIM_CONFIG_PATH', None)
     if json_dir is not None:
         json_path = _Path(json_dir)
@@ -225,20 +225,20 @@ def _find_json_path():
         elif json_path.exists():
             print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} does not exist.')
         elif json_path.is_dir():
-            print('Warning: `WJKIM_CONFIG_PATH` must point to `.wjkim_config.json` file, not its parent directory.')
+            print('Warning: `WJKIM_CONFIG_PATH` must point to `wjkim_config.json` file, not its parent directory.')
         elif json_path.is_file():
             print(f'Warning: `WJKIM_CONFIG_PATH`={json_dir} is not a file.')
         else:
             return _Path(json_dir)
 
-    # Find `.wjkim_config.json` -- via `$HOME/bin/others/.wjkim_config.json`
-    default_path = _Path.home() / 'bin/others/.wjkim_config.json'
+    # Find `wjkim_config.json` -- via `$HOME/bin/others/wjkim_config.json`
+    default_path = _Path.home() / 'bin/others/wjkim_config.json'
     if default_path.is_file():
         return default_path
 
 
 def _fillout_constants():
-    # Find `.wjkim_config.json`
+    # Find `wjkim_config.json`
     if json_path := _find_json_path():
         with open(json_path, 'r') as file:
             dct = json.load(file)
@@ -250,7 +250,7 @@ def _fillout_constants():
     base_dir = os.environ.get('PROJ_DIR', None)
     if not base_dir:
         print('Warning: `wjkim.pathlib` not available.')
-        print('  Option 1. Generate `.wjkim_config.json` and save its location to `WJKIM_CONFIG_PATH` environment variable.')
+        print('  Option 1. Generate `wjkim_config.json` and save its location to `WJKIM_CONFIG_PATH` environment variable.')
         print('  Option 2. Make `PROJ_DIR` to indicate the location of your project directory.')
         print('For more information, see https://github.com/WooJoongKim0107/wjkim_Basics')
         return {}
