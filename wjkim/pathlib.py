@@ -87,6 +87,7 @@ def _remap(old, new, key=None):
     assert matches, f'No files found for {old}'
     assert 'parent' not in explore(old), 'tag `parent` cannot be used with .rename'
     assert key is None or callable(key), f'key must be either None or callable'
+    key = key if callable(key) else lambda x: x
     parent = _Path(matches[0]).parent
 
     old_template = old
