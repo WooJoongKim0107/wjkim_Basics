@@ -2,9 +2,7 @@ __all__ = ['SubStr', 'SubPath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename'
 
 import os
 import re
-import sys
 import json
-import pickle
 from glob import glob as _glob
 from shutil import copy as _copy
 from pathlib import Path as _Path
