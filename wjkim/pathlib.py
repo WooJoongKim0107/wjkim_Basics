@@ -314,7 +314,7 @@ class SubPath(SubStr):
         if left := final.ambiguous():
             raise KeyError(f'{", ".join(map(str, left))} not provided.\n')
         raw = _glob(final.as_str(), recursive=True)
-        return sorted(sorted(raw, key=lambda x: (x.count('/'))))
+        return [self.base_cls(x) for x in sorted(sorted(raw, key=lambda x: (x.count('/'))))]
 
     def explore(self, *targets):
         new = self.ss()
