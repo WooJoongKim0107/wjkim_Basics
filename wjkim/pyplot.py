@@ -7,6 +7,13 @@ from matplotlib.transforms import IdentityTransform  #, Transform
 
 
 def modify_rcparams():
+    """
+    findfont: Generic family 'sans-serif' not found because none of the following families were found: Arial
+
+    If above error occurs, do the followings:
+        sudo apt install msttcorefonts -qq
+        rm ~/.cache/matplotlib -rf
+    """
     print('wjkim.pyplot: Modify rcParams')
     rcParams['text.usetex'] = False
     rcParams['svg.fonttype'] = 'none'
