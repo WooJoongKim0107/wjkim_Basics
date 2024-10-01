@@ -24,9 +24,9 @@ def p(x: str, **kwargs):
     return sp.p(**kwargs)
 
 
-def o(x, *args, mkdir=False, **kwargs):
+def o(x, *args, opener=None, mkdir=False, **kwargs):
     sp = SubPath(x)
-    return sp.o(*args, mkdir=mkdir, **kwargs)
+    return sp.o(*args, opener=opener, mkdir=mkdir, **kwargs)
 
 
 def glob(x, **kwargs):
