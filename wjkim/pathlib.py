@@ -303,6 +303,7 @@ class SubPath(SubStr):
     def o(self, mode='r', opener=None, *, mkdir=False, **kwargs):
         x = self.s(**kwargs)
         open_kwargs = {k: v for k, v in kwargs.items() if k not in self.keys}
+        open_kwargs['mode'] = mode
         if mkdir and 'w' in mode:
             _mkdir_parent(x)
 
