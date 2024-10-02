@@ -310,9 +310,9 @@ class SubPath(SubStr):
             return gzip.open(x, **open_kwargs)
         elif callable(opener):
             return opener(x, **open_kwargs)
-        else:
-            raise ValueError(f"Cannot recognize opener={opener}")
-        return open(x, **open_kwargs)
+        elif opener is None:
+            return open(x, **open_kwargs)
+        raise ValueError(f"Cannot recognize opener={opener}")
 
     def glob(self, **kwargs):
         """Equivalent to bash `ls -d` when `shopt -s globstar` enabled."""
