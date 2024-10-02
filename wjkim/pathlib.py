@@ -3,6 +3,7 @@ __all__ = ['SubStr', 'SubPath', 's', 'ss', 'p', 'o', 'glob', 'explore', 'rename'
 import os
 import re
 import json
+import gzip
 from glob import glob as _glob
 from shutil import copy as _copy
 from pathlib import Path as _Path
@@ -52,10 +53,10 @@ def rename(old, new, key=None, skip=False):
         old_sp = SubPath(old).s(**kw)
         alt_kw = key(kw)
         new_sp = SubPath(new).s(**alt_kw)
- 
+
     key: None or Callable
          If not provided, considered as identity function
- 
+
          Example usage: 
          `key=lambda x: x | dict(i=int(x['i']) + 10)`
     """
@@ -299,12 +300,18 @@ class SubPath(SubStr):
         kwargs = self._constants | kwargs
         return super().ss(**kwargs)
 
-    def o(self, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, *, mkdir=False, **kwargs):
-        open_kwargs = dict(mode=mode, buffering=buffering, encoding=encoding,
-                           errors=errors, newline=newline, closefd=closefd, opener=opener)
+    def o(self, mode='r', opener=None, *, mkdir=False, **kwargs):
         x = self.s(**kwargs)
+        open_kwargs = {k: v for k, v in kwargs.items() if k not in self.keys}
         if mkdir and 'w' in mode:
             _mkdir_parent(x)
+
+        if opener == 'gzip':
+            return gzip.open(x, **open_kwargs)
+        elif callable(opener):
+            return opener(x, **open_kwargs)
+        else:
+            raise ValueError(f"Cannot recognize opener={opener}")
         return open(x, **open_kwargs)
 
     def glob(self, **kwargs):
