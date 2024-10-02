@@ -325,7 +325,7 @@ class SubPath(SubStr):
         filenames = new.glob()
         res = {}
         for filename in filenames:
-            if match := re.match(pattern, filename):
+            if match := re.match(pattern, str(filename)):
                 for key, v in match.groupdict().items():
                     res.setdefault(key, []).append(v)
             else:
@@ -348,7 +348,7 @@ def _interpret_wildcards(x, keys):
     # replace `?` with `(?P<__QUESTION{i}__>[^/])`
     for i in range(len(re.findall(r'(?<!\()\?|\?(?!P)', x))):
         assert f'__QUESTION{i}__' not in keys, f'__QUESTION{i}__ cannot be used'
-        x = re.sub(r'(?<!\()\?|\?(?!P)', rf'(?P<__QUESTION{i}__>[\\w.-]')
+        x = re.sub(r'(?<!\()\?|\?(?!P)', rf'(?P<__QUESTION{i}__>[\\w.-])', x, count=1)
     x2 = x
 
     # replace `*`
